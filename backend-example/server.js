@@ -203,3 +203,77 @@ app.get("/getAllNotes", express.json(), async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// Edit an existing note given the Noteid
+app.patch("/editNote/:noteId", express.json(), async (req, res) => {
+  try {
+    const noteId = req.params.noteId;
+    const { title, content } = req.body;
+
+    // Basic param and body check
+    if (!ObjectId.isValid(noteId) || (!title && !content)) {
+      return res.status(400).json({ error: "Invalid request parameters." });
+    }
+
+    // Verify JWT token from the request headers
+    const token = req.headers.authorization.split(" ")[1];
+    jwt.verify(token, "secret-key", async (err, decoded) => {
+      if (err) {
+        return res.status(401).send("Unauthorized.");
+      }
+
+      // Update note in the database
+      const collection = db.collection(COLLECTIONS.notes);
+      const filter = { _id: new ObjectId(noteId), username: decoded.username };
+      const update = { $set: {} };
+      if (title) update.$set.title = title;
+      if (content) update.$set.content = content;
+
+      const result = await collection.updateOne(filter, update);
+      if (result.matchedCount === 0) {
+        return res.status(404).json({ error: "Note not found or unauthorized." });
+      }
+
+      res.json({ response: `Document with ID ${noteId} properly updated.` });
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+
+// Delete an existing note given the Noteid
+app.delete("/deleteNote/:noteId", express.json(), async (req, res) => {
+  try {
+    const noteId = req.params.noteId;
+
+    // Basic param and body check
+    if (!ObjectId.isValid(noteId)) {
+      return res.status(400).json({ error: "Invalid request parameters." });
+    }
+
+    // Verify JWT token from the request headers
+    const token = req.headers.authorization.split(" ")[1];
+    jwt.verify(token, "secret-key", async (err, decoded) => {
+      if (err) {
+        return res.status(401).send("Unauthorized.");
+      }
+
+      // Delete note in the database
+      const collection = db.collection(COLLECTIONS.notes);
+      const result = await collection.deleteOne({
+        _id: new ObjectId(noteId),
+        username: decoded.username
+      });
+
+      if (result.matchedCount === 0) {
+        return res.status(404).json({ error: "Note not found or unauthorized." });
+      }
+
+      res.json({ response: `Document with ID ${noteId} properly deleted.` });
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
