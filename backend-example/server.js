@@ -170,3 +170,36 @@ app.get("/getNote/:noteId", express.json(), async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// Retrieve all notes belonging to the user
+app.get("/getAllNotes", express.json(), async (req, res) => {
+  try {
+    // // Basic param checking
+    // const noteId = req.params.noteId;
+    // if (!ObjectId.isValid(noteId)) {
+    //   return res.status(400).json({ error: "Invalid note ID." });
+    // }
+
+    // Verify the JWT from the request headers
+    const token = req.headers.authorization.split(" ")[1];
+    jwt.verify(token, "secret-key", async (err, decoded) => {
+      if (err) {
+        return res.status(401).send("Unauthorized.");
+      }
+
+      // Find all notes with given ID
+      const collection = db.collection(COLLECTIONS.notes);
+      const allData = await collection.find({
+        username: decoded.username
+      }).toArray();
+      if (!allData) {
+        return res
+          .status(200)
+          .json({ response: [] });
+      }
+      res.json({ response: allData });
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
